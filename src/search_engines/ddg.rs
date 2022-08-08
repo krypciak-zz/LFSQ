@@ -1,7 +1,13 @@
-pub fn general(query: &str, amount: u32) -> Vec<String> {
-    let mut url_list: Vec<String> = vec![];
+use std::collections::HashSet;
+
+pub fn general(
+    query: &str,
+    amount: u32,
+    force_amount: bool,
+    url_set: &mut HashSet<String>,
+) -> Result<(), String> {
     if amount == 0 {
-        return url_list;
+        return Ok(());
     }
     let pages: u32 = (amount - 1) / 30 + 1;
     println!(
@@ -20,6 +26,12 @@ pub fn general(query: &str, amount: u32) -> Vec<String> {
         );
         println!("Query URL: {}", url);
         let html = super::get_html(url.as_str());
+        if force_amount {
+            if let Err(x) = html {
+                return Err(x);
+            }
+        }
+        let html = html.unwrap();
         //println!("HTML: {}", html);
         let mut iterator = html.split("\n");
 
@@ -34,7 +46,7 @@ pub fn general(query: &str, amount: u32) -> Vec<String> {
 
             if line.starts_with("                  <a class=\"result__url\" href=\"") {
                 let link: String = String::from(iterator.next().unwrap().trim_start());
-                url_list.push(link);
+                url_set.insert(link);
                 urls_found += 1;
                 if urls_found >= amount {
                     break;
@@ -44,5 +56,5 @@ pub fn general(query: &str, amount: u32) -> Vec<String> {
             }
         }
     }
-    url_list
+    Ok(())
 }

@@ -1,24 +1,40 @@
 mod search_engines;
 
-use crate::search_engines::ddg;
-use crate::search_engines::searx_be;
+use crate::search_engines::UrlRequest;
+use crate::search_engines::UrlRequestSite;
 
 fn main() {
-    /*println!(
-        "{}",
-        search_engines::get_html("https://searx.be/search?q=a&categories=images&language=en-US")
-    );
-    return;*/
-    //let vec_ddg = ddg::general("dog", 5u32);
-    // print_vector(&vec_ddg);
+    let amount: u32 = 30;
+    let query_vec = vec!["dog"];
+    let site_vec = vec![
+        UrlRequestSite::General_ddg,
+        //UrlRequestSite::General_searx_be,
+        //UrlRequestSite::Images_searx_be,
+    ];
+    let force_amount = false;
 
-    //let vec_searxbe = searx_be::general("dog", 5u32);
-    //print_vector(&vec_searxbe);
+    let mut request_vec: Vec<UrlRequest> = vec![];
 
-    let vec_img_searxbe = searx_be::image("dog", 300u32, true).unwrap_or_else(|error_msg| {
-        println!("ERROR: {}", error_msg);
+    for query in query_vec.iter() {
+        for site in site_vec.iter() {
+            request_vec.push(UrlRequest {
+                query,
+                amount,
+                force_amount,
+                site: *site,
+            });
+        }
+    }
+
+    let hosts: String = search_engines::get_hosts(&request_vec).unwrap_or_else(|error| {
+        panic!("Error! {}", error);
     });
-    print_vector_tuple(&vec_img_searxbe);
+
+    println!(
+        "Hosts: \n{}\n\nAmount: {}",
+        hosts,
+        hosts.split("\n").count()
+    );
 
     println!("Program finished.");
 }

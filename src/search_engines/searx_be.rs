@@ -1,7 +1,13 @@
-pub fn general(query: &str, amount: u32) -> Vec<String> {
-    let mut url_list: Vec<String> = vec![];
+use std::collections::HashSet;
+
+pub fn general(
+    query: &str,
+    amount: u32,
+    force_amount: bool,
+    url_set: &mut HashSet<String>,
+) -> Result<(), String> {
     if amount == 0 {
-        return url_list;
+        return Ok(());
     }
     println!("-----searx.be general");
 
@@ -15,29 +21,40 @@ pub fn general(query: &str, amount: u32) -> Vec<String> {
         );
         println!("Query URL: {}", url);
 
-        let html = super::get_html(url.as_str());
+        let html = super::get_html(url.as_str())?;
         //Get a list of all occurrences in html
         let occurrences: Vec<_> = html
             .match_indices("<h4 class=\"result_header\" id=\"result-")
             .collect();
 
         let for_count: usize = std::cmp::min(occurrences.len(), (amount - urls_found) as usize);
+        if for_count < 1 {
+            if force_amount {
+                return Err(format!("Ran out of pages at {} urls found", urls_found));
+            }
+            return Ok(());
+        }
+
         for i in 0..for_count {
             let string_search_offset = occurrences[i].0 + 42;
             let url_start_index =
                 html[string_search_offset..].find("href").unwrap() + string_search_offset + 6;
             let url_end_index = html[url_start_index..].find('\"').unwrap() + url_start_index;
             let url: String = html[url_start_index..url_end_index].to_string();
-            url_list.push(url);
-            urls_found += 1;
+            urls_found += url_set.insert(url) as u32;
         }
     }
 
-    url_list
+    Ok(())
 }
 
-pub fn image(query: &str, amount: u32, force_amount: bool) -> Result<Vec<(String, String)>, &str> {
-    let mut url_list: Vec<(String, String)> = vec![];
+pub fn images(
+    query: &str,
+    amount: u32,
+    force_amount: bool,
+    url_set: &mut HashSet<String>,
+) -> Result<(), String> {
+    //Result<(image-url, url), error msg>
 
     println!("-----searx.be image");
 
@@ -47,14 +64,14 @@ pub fn image(query: &str, amount: u32, force_amount: bool) -> Result<Vec<(String
     );
     println!("Query URL: {}", url);
 
-    let html = super::get_html(url.as_str());
+    let html = super::get_html(url.as_str())?;
     //Get a list of all occurrences in html
     let occurrences: Vec<_> = html
         .match_indices("<div class=\"col-md-6\"><a href=\"")
         .collect();
 
     if force_amount && (occurrences.len() / 2) < (amount as usize) {
-        return Err("");
+        return Err(format!("Ran out of pages at {}", occurrences.len() / 2));
     }
 
     let for_count: usize = std::cmp::min(occurrences.len() / 2, amount as usize);
@@ -67,7 +84,8 @@ pub fn image(query: &str, amount: u32, force_amount: bool) -> Result<Vec<(String
         let url_end_index = html[url_start_index..].find('\"').unwrap() + url_start_index;
         let website_url: String = html[url_start_index..url_end_index].to_string();
 
-        url_list.push((img_url, website_url));
+        url_set.insert(img_url);
+        url_set.insert(website_url);
     }
-    Ok(url_list)
+    Ok(())
 }
